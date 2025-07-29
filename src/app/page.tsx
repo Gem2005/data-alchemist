@@ -1,103 +1,182 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { FileUploadSection } from '@/components/FileUploadSection';
+import { DataGridSection } from '@/components/DataGridSection';
+import { ValidationPanel } from '@/components/ValidationPanel';
+import { RuleBuilder } from '@/components/RuleBuilder';
+import { PrioritizationPanel } from '@/components/PrioritizationPanel';
+import { AIAssistant } from '@/components/AIAssistant';
+import { ExportSection } from '@/components/ExportSection';
+import { DataState, FileUploadState, BusinessRule, PrioritizationWeights } from '@/types/data';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Brain, Database, Settings, Download, CheckCircle } from 'lucide-react';
+
+const defaultPrioritizationWeights: PrioritizationWeights = {
+  priorityLevel: 0.25,
+  taskFulfillment: 0.20,
+  fairness: 0.15,
+  workloadBalance: 0.15,
+  skillMatching: 0.10,
+  phasePreference: 0.05,
+  clientGroup: 0.05,
+  workerExperience: 0.05,
+};
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [dataState, setDataState] = useState<DataState>({
+    clients: [],
+    workers: [],
+    tasks: [],
+    isLoading: false,
+    errors: [],
+  });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const [fileUploadState, setFileUploadState] = useState<FileUploadState>({
+    clients: null,
+    workers: null,
+    tasks: null,
+  });
+
+  const [businessRules, setBusinessRules] = useState<BusinessRule[]>([]);
+  const [prioritizationWeights, setPrioritizationWeights] = useState<PrioritizationWeights>(defaultPrioritizationWeights);
+  const [activeTab, setActiveTab] = useState('upload');
+
+  const handleDataUpdate = (newDataState: Partial<DataState>) => {
+    setDataState(prev => ({ ...prev, ...newDataState }));
+  };
+
+  const handleRuleUpdate = (rules: BusinessRule[]) => {
+    setBusinessRules(rules);
+  };
+
+  const hasData = dataState.clients.length > 0 || dataState.workers.length > 0 || dataState.tasks.length > 0;
+  const validationPassed = dataState.errors.filter(e => e.type === 'error').length === 0;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
+                <Brain className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Data Alchemist</h1>
+                <p className="text-sm text-gray-600">AI-Powered Resource Allocation Configurator</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {hasData && (
+                <div className="flex items-center space-x-2">
+                  <div className={`h-3 w-3 rounded-full ${validationPassed ? 'bg-green-400' : 'bg-yellow-400'}`} />
+                  <span className="text-sm text-gray-600">
+                    {validationPassed ? 'Ready to Export' : 'Validation Issues'}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid grid-cols-5 w-full max-w-2xl mx-auto">
+            <TabsTrigger value="upload" className="flex items-center space-x-2">
+              <Database className="h-4 w-4" />
+              <span>Data</span>
+            </TabsTrigger>
+            <TabsTrigger value="validate" disabled={!hasData} className="flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Validate</span>
+            </TabsTrigger>
+            <TabsTrigger value="rules" disabled={!hasData} className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Rules</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai" disabled={!hasData} className="flex items-center space-x-2">
+              <Brain className="h-4 w-4" />
+              <span>AI Assistant</span>
+            </TabsTrigger>
+            <TabsTrigger value="export" disabled={!validationPassed} className="flex items-center space-x-2">
+              <Download className="h-4 w-4" />
+              <span>Export</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Data Ingestion</CardTitle>
+                <CardDescription>
+                  Upload your CSV or XLSX files for clients, workers, and tasks. Our AI will intelligently parse and validate your data.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FileUploadSection
+                  fileUploadState={fileUploadState}
+                  onFileUploadStateChange={setFileUploadState}
+                  onDataUpdate={handleDataUpdate}
+                />
+              </CardContent>
+            </Card>
+
+            {hasData && (
+              <DataGridSection
+                dataState={dataState}
+                onDataUpdate={handleDataUpdate}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="validate" className="space-y-6">
+            <ValidationPanel
+              dataState={dataState}
+              onDataUpdate={handleDataUpdate}
+            />
+          </TabsContent>
+
+          <TabsContent value="rules" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <RuleBuilder
+                  dataState={dataState}
+                  businessRules={businessRules}
+                  onRuleUpdate={handleRuleUpdate}
+                />
+              </div>
+              <div>
+                <PrioritizationPanel
+                  weights={prioritizationWeights}
+                  onWeightsUpdate={setPrioritizationWeights}
+                />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ai" className="space-y-6">
+            <AIAssistant
+              dataState={dataState}
+              businessRules={businessRules}
+              onDataUpdate={handleDataUpdate}
+              onRuleUpdate={handleRuleUpdate}
+            />
+          </TabsContent>
+
+          <TabsContent value="export" className="space-y-6">
+            <ExportSection
+              dataState={dataState}
+              businessRules={businessRules}
+              prioritizationWeights={prioritizationWeights}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }

@@ -1,0 +1,16 @@
+WorkerID,WorkerName,Skills,AvailableSlots,MaxLoadPerPhase,WorkerGroup,QualificationLevel
+W001,Alice Johnson,"JavaScript,React,TypeScript","[1,2,3,4,5]",3,frontend,senior
+W002,Bob Smith,"Python,Django,PostgreSQL","[1,3,5]",2,backend,mid
+W003,Carol Davis,"Java,Spring,MySQL","[2,4,5]",4,backend,senior
+W004,David Wilson,"React,Vue,CSS","[1,2,4]",2,frontend,junior
+W005,Emma Brown,"Python,FastAPI,MongoDB","[1,3,4,5]",3,backend,senior
+W006,Frank Miller,"DevOps,Docker,AWS","[2,3,4,5]",3,devops,senior
+W007,Grace Lee,"UX,Design,Figma","[1,2,3]",2,design,mid
+W008,Henry Garcia,"JavaScript,Node,Express","[1,4,5]",3,fullstack,senior
+W009,Iris Chen,"C#,.NET,Azure","[2,3,5]",2,backend,mid
+W010,Jack Martinez,"React,Redux,GraphQL","[1,2,3,4]",4,frontend,senior
+W011,Karen Taylor,"Python,ML,TensorFlow","[3,4,5]",2,data,senior
+W012,Leo Anderson,"PHP,Laravel,MySQL","[1,2,4,5]",3,backend,mid
+W013,Mia Thompson,"Flutter,Dart,Mobile","[1,3,4]",2,mobile,junior
+W014,Noah White,"Go,Kubernetes,Cloud","[2,4,5]",3,devops,senior
+W015,Olivia Harris,"QA,Selenium,Testing","[1,2,3,4,5]",4,testing,mid

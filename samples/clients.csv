@@ -1,0 +1,11 @@
+ClientID,ClientName,PriorityLevel,RequestedTaskIDs,GroupTag,AttributesJSON
+C001,Acme Corp,5,"T001,T003,T005",enterprise,"{""budget"": 50000, ""deadline"": ""2024-03-15"", ""contact"": ""john.doe@acme.com""}"
+C002,TechStart Inc,3,"T002,T004",startup,"{""budget"": 15000, ""deadline"": ""2024-04-01"", ""flexible"": true}"
+C003,Global Industries,4,"T001,T002,T006",enterprise,"{""budget"": 75000, ""deadline"": ""2024-02-28"", ""critical"": true}"
+C004,Local Business,2,"T007,T008",small,"{""budget"": 8000, ""deadline"": ""2024-05-15"", ""location"": ""downtown""}"
+C005,Innovation Labs,5,"T003,T004,T009",research,"{""budget"": 100000, ""deadline"": ""2024-03-30"", ""experimental"": true}"
+C006,Healthcare Plus,4,"T005,T010",healthcare,"{""budget"": 40000, ""compliance"": ""HIPAA"", ""urgency"": ""high""}"
+C007,EduTech Solutions,3,"T006,T011",education,"{""budget"": 25000, ""semester"": ""spring"", ""students"": 500}"
+C008,FinServ Group,5,"T007,T012",financial,"{""budget"": 80000, ""regulation"": ""SOX"", ""deadline"": ""2024-02-15""}"
+C009,RetailMax,2,"T008,T013",retail,"{""budget"": 12000, ""seasonal"": true, ""peak"": ""Q4""}"
+C010,ManufacturingPro,4,"T009,T014,T015",manufacturing,"{""budget"": 60000, ""safety"": ""ISO45001"", ""capacity"": 1000}"

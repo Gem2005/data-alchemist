@@ -1,0 +1,16 @@
+TaskID,TaskName,Category,Duration,RequiredSkills,PreferredPhases,MaxConcurrent
+T001,Frontend Dashboard,Development,2,"JavaScript,React,TypeScript","[1,2,3]",2
+T002,API Development,Development,3,"Python,Django,PostgreSQL","[2,3,4]",1
+T003,Database Migration,Infrastructure,1,"PostgreSQL,Migration","[3,4]",1
+T004,Mobile App UI,Development,4,"Flutter,Dart,Mobile","[1,2,3,4]",2
+T005,Security Audit,Security,2,"Security,Audit,Compliance","[4,5]",1
+T006,DevOps Pipeline,Infrastructure,3,"DevOps,Docker,AWS","[2,3,4,5]",1
+T007,UX Research,Design,2,"UX,Design,Research","[1,2]",3
+T008,Performance Testing,Testing,1,"QA,Testing,Performance","[4,5]",2
+T009,ML Model Training,DataScience,5,"Python,ML,TensorFlow","[3,4,5]",1
+T010,Code Review,Quality,1,"Review,Standards,Best Practices","[2,3,4,5]",4
+T011,Documentation,Documentation,2,"Writing,Technical,Communication","[1,2,3,4,5]",3
+T012,Integration Testing,Testing,3,"QA,Integration,API","[3,4,5]",2
+T013,Frontend Optimization,Development,2,"JavaScript,Performance,React","[4,5]",1
+T014,Cloud Migration,Infrastructure,4,"AWS,Cloud,Migration","[2,3,4]",1
+T015,Data Analysis,Analytics,3,"Python,Analytics,Visualization","[1,3,5]",2
