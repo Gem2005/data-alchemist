@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DataState, BusinessRule } from '@/types/data';
 import { Brain, MessageCircle, Search, Wand2, Lightbulb, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { azureOpenAIService } from '@/lib/azureOpenAI';
 
 interface AIAssistantProps {
   dataState: DataState;
@@ -32,6 +33,9 @@ export function AIAssistant({
     timestamp: Date;
   }>>([]);
 
+  // Check if Azure OpenAI is configured
+  const isAzureConfigured = azureOpenAIService.isReady();
+
   // AI-powered natural language data search
   const processNaturalLanguageQuery = async () => {
     if (!naturalLanguageQuery.trim()) {
@@ -47,57 +51,22 @@ export function AIAssistant({
     }]);
 
     try {
-      // Simulate AI processing - in real implementation, this would call Azure OpenAI
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      const query = naturalLanguageQuery.toLowerCase();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let results: any[] = [];
-      let aiResponse = '';
-
-      // Simple pattern matching for demonstration
-      if (query.includes('duration') && query.includes('more than')) {
-        const durationMatch = query.match(/more than (\d+)/);
-        if (durationMatch) {
-          const threshold = parseInt(durationMatch[1]);
-          results = dataState.tasks.filter(task => task.Duration > threshold);
-          aiResponse = `Found ${results.length} tasks with duration more than ${threshold} phases.`;
-        }
-      } else if (query.includes('phase 2') || query.includes('phase two')) {
-        results = dataState.tasks.filter(task => 
-          task.PreferredPhases.includes(2)
-        );
-        aiResponse = `Found ${results.length} tasks that prefer phase 2.`;
-      } else if (query.includes('skill') && query.includes('javascript')) {
-        results = dataState.workers.filter(worker => 
-          worker.Skills.some(skill => skill.toLowerCase().includes('javascript'))
-        );
-        aiResponse = `Found ${results.length} workers with JavaScript skills.`;
-      } else if (query.includes('priority') && query.includes('high')) {
-        results = dataState.clients.filter(client => client.PriorityLevel >= 4);
-        aiResponse = `Found ${results.length} high-priority clients (priority level 4-5).`;
-      } else if (query.includes('available') && query.includes('slots')) {
-        results = dataState.workers.filter(worker => worker.AvailableSlots.length >= 3);
-        aiResponse = `Found ${results.length} workers with 3 or more available slots.`;
-      } else {
-        // Fallback: show all data types
-        results = [
-          ...dataState.clients.slice(0, 3),
-          ...dataState.workers.slice(0, 3),
-          ...dataState.tasks.slice(0, 3)
-        ];
-        aiResponse = `Here are some relevant data entries. Try more specific queries like "tasks with duration more than 2" or "workers with JavaScript skills".`;
-      }
+      // Use real Azure OpenAI service instead of mock responses
+      const { results, response } = await azureOpenAIService.processNaturalLanguageQuery(
+        naturalLanguageQuery, 
+        dataState
+      );
 
       setQueryResults(results);
       setChatHistory(prev => [...prev, {
         type: 'ai',
-        message: aiResponse,
+        message: response,
         timestamp: new Date()
       }]);
 
       toast.success('Query processed successfully');
-    } catch {
+    } catch (error) {
+      console.error('Query processing failed:', error);
       toast.error('Failed to process query');
       setChatHistory(prev => [...prev, {
         type: 'ai',
@@ -111,101 +80,55 @@ export function AIAssistant({
   };
 
   // AI rule recommendations
-  const generateRuleRecommendations = () => {
-    const recommendations: string[] = [];
+  const generateRuleRecommendations = async () => {
+    try {
+      // Use real Azure OpenAI service instead of mock responses
+      const recommendations = await azureOpenAIService.generateRuleRecommendations(dataState);
 
-    // Check for co-run opportunities
-    const tasksBySkills = new Map<string, string[]>();
-    dataState.tasks.forEach(task => {
-      task.RequiredSkills.forEach(skill => {
-        if (!tasksBySkills.has(skill)) tasksBySkills.set(skill, []);
-        tasksBySkills.get(skill)!.push(task.TaskID);
-      });
-    });
+      setChatHistory(prev => [...prev, {
+        type: 'ai',
+        message: recommendations.length > 0 
+          ? `Here are some rule recommendations based on your data:\n\n${recommendations.join('\n\n')}`
+          : 'Your current data looks well-balanced! No specific rule recommendations at this time.',
+        timestamp: new Date()
+      }]);
 
-    tasksBySkills.forEach((tasks, skill) => {
-      if (tasks.length >= 2) {
-        recommendations.push(`Tasks ${tasks.join(', ')} all require "${skill}" skill. Consider creating a co-run rule for efficiency.`);
-      }
-    });
-
-    // Check for overloaded workers
-    const workerGroupLoads = new Map<string, number>();
-    dataState.workers.forEach(worker => {
-      const currentLoad = workerGroupLoads.get(worker.WorkerGroup) || 0;
-      workerGroupLoads.set(worker.WorkerGroup, currentLoad + worker.MaxLoadPerPhase);
-    });
-
-    workerGroupLoads.forEach((totalLoad, group) => {
-      if (totalLoad > 10) {
-        recommendations.push(`Worker group "${group}" has high total capacity (${totalLoad}). Consider adding load limit rules to prevent burnout.`);
-      }
-    });
-
-    // Check for phase preferences
-    const phasePopularity = new Map<number, number>();
-    dataState.tasks.forEach(task => {
-      task.PreferredPhases.forEach(phase => {
-        phasePopularity.set(phase, (phasePopularity.get(phase) || 0) + 1);
-      });
-    });
-
-    const maxPhase = Math.max(...Array.from(phasePopularity.values()));
-    phasePopularity.forEach((count, phase) => {
-      if (count === maxPhase && count > 1) {
-        recommendations.push(`Phase ${phase} is very popular (${count} tasks). Consider creating phase window restrictions to spread the load.`);
-      }
-    });
-
-    setChatHistory(prev => [...prev, {
-      type: 'ai',
-      message: recommendations.length > 0 
-        ? `Here are some rule recommendations based on your data:\n\n${recommendations.join('\n\n')}`
-        : 'Your current data looks well-balanced! No specific rule recommendations at this time.',
-      timestamp: new Date()
-    }]);
-
-    toast.success('Generated rule recommendations');
+      toast.success('Generated rule recommendations');
+    } catch (error) {
+      console.error('Rule recommendations failed:', error);
+      toast.error('Failed to generate recommendations');
+      setChatHistory(prev => [...prev, {
+        type: 'ai',
+        message: 'Sorry, I encountered an error generating recommendations. Please try again.',
+        timestamp: new Date()
+      }]);
+    }
   };
 
   // AI data corrections
-  const suggestDataCorrections = () => {
-    const suggestions: string[] = [];
+  const suggestDataCorrections = async () => {
+    try {
+      // Use real Azure OpenAI service instead of mock responses
+      const suggestions = await azureOpenAIService.generateDataSuggestions(dataState);
 
-    // Check for common data issues
-    dataState.clients.forEach(client => {
-      if (client.RequestedTaskIDs.length === 0) {
-        suggestions.push(`Client ${client.ClientID} has no requested tasks. Consider adding some task assignments.`);
-      }
-    });
+      setChatHistory(prev => [...prev, {
+        type: 'ai',
+        message: suggestions.length > 0 
+          ? `Here are some data improvement suggestions:\n\n${suggestions.join('\n\n')}`
+          : 'Your data looks comprehensive! All entities have the necessary information for optimal allocation.',
+        timestamp: new Date()
+      }]);
 
-    dataState.workers.forEach(worker => {
-      if (worker.Skills.length === 0) {
-        suggestions.push(`Worker ${worker.WorkerID} has no skills listed. This may limit their task assignments.`);
-      }
-      if (worker.AvailableSlots.length === 0) {
-        suggestions.push(`Worker ${worker.WorkerID} has no available slots. They won't be able to work on any tasks.`);
-      }
-    });
-
-    dataState.tasks.forEach(task => {
-      if (task.RequiredSkills.length === 0) {
-        suggestions.push(`Task ${task.TaskID} has no required skills. Consider specifying skills for better matching.`);
-      }
-      if (task.PreferredPhases.length === 0) {
-        suggestions.push(`Task ${task.TaskID} has no preferred phases. This may affect scheduling efficiency.`);
-      }
-    });
-
-    setChatHistory(prev => [...prev, {
-      type: 'ai',
-      message: suggestions.length > 0 
-        ? `Here are some data improvement suggestions:\n\n${suggestions.join('\n\n')}`
-        : 'Your data looks comprehensive! All entities have the necessary information for optimal allocation.',
-      timestamp: new Date()
-    }]);
-
-    toast.success('Generated data improvement suggestions');
+      toast.success('Generated data improvement suggestions');
+    } catch (error) {
+      console.error('Data suggestions failed:', error);
+      toast.error('Failed to generate suggestions');
+      setChatHistory(prev => [...prev, {
+        type: 'ai',
+        message: 'Sorry, I encountered an error generating suggestions. Please try again.',
+        timestamp: new Date()
+      }]);
+    }
   };
 
   const exampleQueries = [
@@ -220,12 +143,25 @@ export function AIAssistant({
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Brain className="h-5 w-5 mr-2" />
-            AI Assistant
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Brain className="h-5 w-5 mr-2" />
+              AI Assistant
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className={`w-2 h-2 rounded-full ${isAzureConfigured ? 'bg-green-500' : 'bg-orange-500'}`} />
+              <span className="text-xs text-gray-500">
+                {isAzureConfigured ? 'Azure OpenAI' : 'Fallback Mode'}
+              </span>
+            </div>
           </CardTitle>
           <CardDescription>
             Get intelligent insights, recommendations, and perform natural language queries on your data
+            {!isAzureConfigured && (
+              <div className="mt-2 text-sm text-orange-600">
+                Configure Azure OpenAI in environment variables for enhanced AI features
+              </div>
+            )}
           </CardDescription>
         </CardHeader>
         

@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DataState, ValidationError } from '@/types/data';
-import { AlertCircle, CheckCircle, AlertTriangle, Zap, RefreshCw } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Zap, RefreshCw, Sparkles, Brain } from 'lucide-react';
 import { validateClientData, validateWorkerData, validateTaskData, validateCrossReferences } from '@/lib/dataUtils';
+import { aiValidationService } from '@/lib/aiValidationService';
 import { toast } from 'sonner';
 
 interface ValidationPanelProps {
@@ -17,6 +18,17 @@ interface ValidationPanelProps {
 export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProps) {
   const [isValidating, setIsValidating] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'error' | 'warning' | 'info'>('all');
+  const [isGeneratingFixes, setIsGeneratingFixes] = useState(false);
+  const [aiFixSuggestions, setAiFixSuggestions] = useState<Array<{
+    errorId: string;
+    suggestedFix: string;
+    explanation: string;
+    confidence: number;
+    autoApplicable: boolean;
+  }>>([]);
+
+  // Check if Azure OpenAI is configured for AI-powered fixes
+  const isAIConfigured = aiValidationService.isReady();
 
   const runValidation = async () => {
     setIsValidating(true);
@@ -43,12 +55,65 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
     }
   };
 
+  // Generate AI-powered fix suggestions for all errors
+  const generateAIFixSuggestions = async () => {
+    if (dataState.errors.length === 0) {
+      toast.info('No validation errors to fix');
+      return;
+    }
+
+    setIsGeneratingFixes(true);
+    
+    try {
+      const { suggestions, response } = await aiValidationService.getFixSuggestions(
+        dataState.errors,
+        dataState
+      );
+
+      setAiFixSuggestions(suggestions);
+      
+      console.log('AI suggestions received:', suggestions.length, suggestions);
+      
+      const aiCount = suggestions.filter(s => s.confidence > 0.8).length;
+      const autoCount = suggestions.filter(s => s.autoApplicable).length;
+      
+      toast.success(`${response}. ${aiCount} high-confidence, ${autoCount} auto-applicable fixes available`);
+    } catch (error) {
+      console.error('AI fix generation failed:', error);
+      toast.error('Failed to generate AI fix suggestions');
+    } finally {
+      setIsGeneratingFixes(false);
+    }
+  };
+
+  // Apply AI-suggested fix
+  const applyAIFix = (suggestion: typeof aiFixSuggestions[0], error: ValidationError) => {
+    try {
+      const updates = aiValidationService.applyFix(suggestion, error, dataState);
+      onDataUpdate(updates);
+      
+      // Remove the applied suggestion from the list
+      setAiFixSuggestions(prev => prev.filter(s => s.errorId !== suggestion.errorId));
+      
+      toast.success(`Applied AI fix: ${suggestion.suggestedFix}`);
+    } catch (error) {
+      console.error('Failed to apply AI fix:', error);
+      toast.error('Failed to apply the suggested fix');
+    }
+  };
+
   const autoFixError = (error: ValidationError) => {
     if (!error.autoFixAvailable) return;
 
-    // Auto-fix logic for specific error types
+    // Check if we have an AI suggestion for this error
+    const aiSuggestion = aiFixSuggestions.find(s => s.errorId === error.id);
+    if (aiSuggestion && aiSuggestion.autoApplicable) {
+      applyAIFix(aiSuggestion, error);
+      return;
+    }
+
+    // Fallback to manual auto-fix logic
     if (error.field === 'PriorityLevel' && error.entity === 'client') {
-      // Fix priority level to be within valid range
       const updatedClients = dataState.clients.map(client => 
         client.ClientID === error.entityId 
           ? { ...client, PriorityLevel: Math.max(1, Math.min(5, client.PriorityLevel)) }
@@ -59,7 +124,6 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
     }
     
     if (error.field === 'Duration' && error.entity === 'task') {
-      // Fix duration to be at least 1
       const updatedTasks = dataState.tasks.map(task => 
         task.TaskID === error.entityId 
           ? { ...task, Duration: Math.max(1, task.Duration) }
@@ -70,7 +134,6 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
     }
 
     if (error.field === 'MaxLoadPerPhase' && error.entity === 'worker') {
-      // Fix max load to be at least 1
       const updatedWorkers = dataState.workers.map(worker => 
         worker.WorkerID === error.entityId 
           ? { ...worker, MaxLoadPerPhase: Math.max(1, worker.MaxLoadPerPhase) }
@@ -177,23 +240,45 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
                 Comprehensive data validation with AI-powered error detection and auto-fix suggestions
               </CardDescription>
             </div>
-            <Button 
-              onClick={runValidation} 
-              disabled={isValidating}
-              className="shrink-0"
-            >
-              {isValidating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Validating...
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Re-validate
-                </>
+            <div className="flex space-x-2 shrink-0">
+              {isAIConfigured && dataState.errors.length > 0 && (
+                <Button 
+                  onClick={generateAIFixSuggestions}
+                  disabled={isGeneratingFixes}
+                  variant="outline"
+                  size="sm"
+                >
+                  {isGeneratingFixes ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-2" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <Brain className="h-4 w-4 mr-2" />
+                      AI Fix Suggestions
+                    </>
+                  )}
+                </Button>
               )}
-            </Button>
+              <Button 
+                onClick={runValidation} 
+                disabled={isValidating}
+                className="shrink-0"
+              >
+                {isValidating ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Validating...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Re-validate
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         
@@ -233,48 +318,90 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
                 </p>
               </div>
             ) : (
-              filteredErrors.map(error => (
-                <div key={error.id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      {getErrorIcon(error.type)}
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-1">
-                          <Badge variant={getErrorBadgeVariant(error.type)}>
-                            {error.type.toUpperCase()}
-                          </Badge>
-                          <Badge variant="outline">
-                            {error.entity.toUpperCase()}
-                          </Badge>
-                          <span className="text-sm font-medium text-gray-600">
-                            {error.entityId}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-900 font-medium">
-                          {error.message}
-                        </p>
-                        {error.suggestion && (
-                          <p className="text-xs text-gray-600 mt-1">
-                            💡 {error.suggestion}
+              filteredErrors.map(error => {
+                const aiSuggestion = aiFixSuggestions.find(s => s.errorId === error.id);
+                
+                // Debug logging
+                if (filteredErrors.indexOf(error) === 0) {
+                  console.log('First error ID:', error.id);
+                  console.log('Available AI suggestions:', aiFixSuggestions.map(s => s.errorId));
+                  console.log('Match found:', !!aiSuggestion);
+                }
+                
+                return (
+                  <div key={error.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start space-x-3">
+                        {getErrorIcon(error.type)}
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
+                            <Badge variant={getErrorBadgeVariant(error.type)}>
+                              {error.type.toUpperCase()}
+                            </Badge>
+                            <Badge variant="outline">
+                              {error.entity.toUpperCase()}
+                            </Badge>
+                            <span className="text-sm font-medium text-gray-600">
+                              {error.entityId}
+                            </span>
+                            {aiSuggestion && (
+                              <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-200">
+                                <Brain className="h-3 w-3 mr-1" />
+                                AI: {Math.round(aiSuggestion.confidence * 100)}%
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-900 font-medium">
+                            {error.message}
                           </p>
+                          {error.suggestion && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              💡 {error.suggestion}
+                            </p>
+                          )}
+                          {aiSuggestion && (
+                            <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200">
+                              <p className="text-xs font-medium text-blue-900 mb-1">
+                                🤖 AI Suggestion:
+                              </p>
+                              <p className="text-xs text-blue-800 mb-1">
+                                <strong>Fix:</strong> {aiSuggestion.suggestedFix}
+                              </p>
+                              <p className="text-xs text-blue-700">
+                                <strong>Why:</strong> {aiSuggestion.explanation}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex space-x-2 ml-4 shrink-0">
+                        {aiSuggestion && aiSuggestion.autoApplicable && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            onClick={() => applyAIFix(aiSuggestion, error)}
+                            className="bg-blue-600 hover:bg-blue-700"
+                          >
+                            <Sparkles className="h-3 w-3 mr-1" />
+                            Apply AI Fix
+                          </Button>
+                        )}
+                        {error.autoFixAvailable && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => autoFixError(error)}
+                          >
+                            <Zap className="h-3 w-3 mr-1" />
+                            Auto-fix
+                          </Button>
                         )}
                       </div>
                     </div>
-                    
-                    {error.autoFixAvailable && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => autoFixError(error)}
-                        className="ml-4 shrink-0"
-                      >
-                        <Zap className="h-3 w-3 mr-1" />
-                        Auto-fix
-                      </Button>
-                    )}
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CardContent>

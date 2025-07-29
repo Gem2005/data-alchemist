@@ -148,6 +148,16 @@ AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT_NAME=your-deployment-name
 ```
 
+### Azure OpenAI Integration
+The application includes intelligent Azure OpenAI integration for enhanced AI features:
+
+- **Automatic Fallback**: If Azure OpenAI is not configured, the app uses intelligent mock responses
+- **Configuration Status**: The UI indicates whether Azure OpenAI is active or using fallback mode
+- **Secure Implementation**: API keys are kept server-side for security
+- **Error Handling**: Robust error recovery and retry mechanisms
+
+For detailed setup instructions, see [AZURE_OPENAI_INTEGRATION.md](./AZURE_OPENAI_INTEGRATION.md).
+
 ### Customization
 - Modify validation rules in `src/lib/dataUtils.ts`
 - Add new data types in `src/types/data.ts`
