@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { FileUploadState, DataState } from '@/types/data';
+import { FileUploadState, DataState, Client, Worker, Task } from '@/types/data';
 import { parseFile, parseClientData, parseWorkerData, parseTaskData, validateClientData, validateWorkerData, validateTaskData, validateCrossReferences } from '@/lib/dataUtils';
 import { Upload, File, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -44,21 +44,21 @@ export function FileUploadSection({
       // Process clients file
       if (fileUploadState.clients) {
         const rawClientsData = await parseFile(fileUploadState.clients);
-        clientsData = parseClientData(rawClientsData);
+        clientsData = parseClientData(rawClientsData as Client[]);
         toast.success(`Processed ${clientsData.length} clients`);
       }
 
       // Process workers file
       if (fileUploadState.workers) {
         const rawWorkersData = await parseFile(fileUploadState.workers);
-        workersData = parseWorkerData(rawWorkersData);
+        workersData = parseWorkerData(rawWorkersData as Worker[]);
         toast.success(`Processed ${workersData.length} workers`);
       }
 
       // Process tasks file
       if (fileUploadState.tasks) {
         const rawTasksData = await parseFile(fileUploadState.tasks);
-        tasksData = parseTaskData(rawTasksData);
+        tasksData = parseTaskData(rawTasksData as Task[]);
         toast.success(`Processed ${tasksData.length} tasks`);
       }
 

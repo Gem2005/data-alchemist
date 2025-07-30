@@ -72,8 +72,6 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
 
       setAiFixSuggestions(suggestions);
       
-      console.log('AI suggestions received:', suggestions.length, suggestions);
-      
       const aiCount = suggestions.filter(s => s.confidence > 0.8).length;
       const autoCount = suggestions.filter(s => s.autoApplicable).length;
       
@@ -320,13 +318,6 @@ export function ValidationPanel({ dataState, onDataUpdate }: ValidationPanelProp
             ) : (
               filteredErrors.map(error => {
                 const aiSuggestion = aiFixSuggestions.find(s => s.errorId === error.id);
-                
-                // Debug logging
-                if (filteredErrors.indexOf(error) === 0) {
-                  console.log('First error ID:', error.id);
-                  console.log('Available AI suggestions:', aiFixSuggestions.map(s => s.errorId));
-                  console.log('Match found:', !!aiSuggestion);
-                }
                 
                 return (
                   <div key={error.id} className="border rounded-lg p-4 space-y-2">
